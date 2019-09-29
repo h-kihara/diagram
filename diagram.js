@@ -30,43 +30,94 @@ function Node(x, y, type){
         this.update();
     };
     this.update = function(){
-        createObj(this.obj, this.type, this.x, this.y);
+        this.obj = createObj(this.obj, this.type, this.x, this.y);
+        this.color = this.obj.getAttribute("fill");
         if(this.arms.left ) this.arms.left.update();
         if(this.arms.right) this.arms.right.update();
         if(this.arms.up   ) this.arms.up.update();
         if(this.arms.down ) this.arms.down.update();
         this.arms.free.forEach((e)=>e.update());
     };
+    function createObj(obj, type, x, y){
+        return (type=="start")   ? setCircle(obj, x,y,5,"#0F8")  :
+               (type=="knot")    ? setCircle(obj, x,y,3,"#000")  :
+               (type=="cond")    ? setCond(obj, x,y,16,20,"#FF8"):
+               (type=="process") ? setRect(obj, x,y,20,38,"#FA8"):
+               (type=="IO"     ) ? setIO(obj, x,y,20,12,"#FA8"):
+               null;
+    }
+    function setCircle(obj, cx,cy,r, color){
+        if(!obj) obj = document.createElementNS(NS,"circle");
+        else if(obj.nodeName!="circle") obj = replaceObj(obj,document.createElementNS(NS,"circle"));
+        obj.setAttribute('cx',cx);
+        obj.setAttribute('cy',cy);
+        obj.setAttribute('r',r);
+        obj.setAttribute('fill',color);
+        svg.appendChild(obj);
+        return obj;
+    }
+    function setRect(obj, cx,cy,a,b,color){
+        if(!obj) obj = document.createElementNS(NS,"rect");
+        else if(obj.nodeName!="rect") obj = replaceObj(obj,document.createElementNS(NS,"rect"));
+        obj.setAttribute('x',cx-b/2);
+        obj.setAttribute('y',cy-a/2);
+        obj.setAttribute('width',b);
+        obj.setAttribute('height',a);
+        obj.setAttribute('stroke',"red");
+        obj.setAttribute('fill',color);
+        svg.appendChild(obj);
+        return obj;
+    }
+    function setCond(obj, cx,cy,a,b,color){
+        if(!obj) obj = document.createElementNS(NS,"polygon");
+        else if(obj.nodeName!="polygon") obj = replaceObj(obj,document.createElementNS(NS,"polygon"));
+        const _top    =  cx     +","+(cy-a/2);
+        const _bottom =  cx     +","+(cy+a/2);
+        const _left   = (cx-b/2)+","+ cy     ;
+        const _right  = (cx+b/2)+","+ cy     ;
+        obj.setAttribute('points',[_top,_left,_bottom,_right].join(" "));
+        obj.setAttribute('stroke',"red");
+        obj.setAttribute('fill',color);
+        svg.appendChild(obj);
+        return obj;
+    }
+    function setIO(obj, cx,cy,w,h,color){
+        if(!obj) obj = document.createElementNS(NS,"polygon");
+        else if(obj.nodeName!="polygon") obj = replaceObj(obj,document.createElementNS(NS,"polygon"));
+        const _nw = (cx-w/2    )+","+(cy-h/2);
+        const _nc = (cx-w/2+h/2)+","+ cy     ;
+        const _sw = (cx-w/2    )+","+(cy+h/2);
+        const _se = (cx+w/2    )+","+(cy+h/2);
+        const _sc = (cx+w/2+h/2)+","+ cy     ;
+        const _ne = (cx+w/2    )+","+(cy-h/2);
+        obj.setAttribute('points',[_nw,_nc,_sw,_se,_sc,_ne].join(" "));
+        obj.setAttribute('stroke',"red");
+        obj.setAttribute('fill',color);
+        svg.appendChild(obj);
+        return obj;
+    }
 }
 function Edge(n1, n2) {
     this.n1 = n1;
     this.n2 = n2;
     this.obj = insertLineBefore(n1.x,n1.y,n2.x,n2.y);
     if(n1.x==n2.x && n1.y<n2.y) {
-        console.log("down");
         n1.arms.down = this;
         n2.arms.up   = this;
     }
     else if(n1.x==n2.x && n1.y>n2.y) {
-        console.log("up");
         n1.arms.up   = this;
         n2.arms.down = this;
     }
     else if(n1.y==n2.y && n1.x<n2.x) {
-        console.log("right");
         n1.arms.right   = this;
         n2.arms.left    = this;
     }
     else if(n1.y==n2.y && n1.x>n2.x) {
-        console.log("left");
-        console.log(this);
         n1.arms.left    = this;
         n2.arms.right   = this;
-        console.log(n1.arms.left);
-        console.log(n2.arms.right);
     }
     else {
-        console.log("free");
         n1.arms.free.push(this);
         n2.arms.free.push(this);
     }
@@ -85,52 +136,12 @@ function Edge(n1, n2) {
         this.obj.setAttribute("y2",this.n2.y);
     };
 }
-function createObj(obj, type, x, y){
-    return (type=="start")   ? setCircle(obj, x,y,5,"#0F8")  :
-           (type=="knot")    ? setCircle(obj, x,y,3,"#000")  :
-           (type=="cond")    ? setCond(obj, x,y,16,20,"#FF8"):
-           (type=="process") ? setRect(obj, x,y,20,38,"#FA8"):
-           null;
-}
 function replaceObj(oldobj, newobj){
+    console.log(oldobj);
+    console.log(newobj);
     svg.insertBefore(newobj,oldobj);
     svg.removeChild(oldobj);
     return newobj;
-}
-function setCircle(obj, cx,cy,r, color){
-    if(!obj) obj = document.createElementNS(NS,"circle");
-    else if(obj.nodeName!="circle") obj = replaceObj(obj,document.createElementNS(NS,"circle"));
-    obj.setAttribute('cx',cx);
-    obj.setAttribute('cy',cy);
-    obj.setAttribute('r',r);
-    obj.setAttribute('fill',color);
-    svg.appendChild(obj);
-    return obj;
-}
-function setRect(obj, cx,cy,a,b,color){
-    if(!obj) obj = document.createElementNS(NS,"rect");
-    else if(obj.nodeName!="rect") obj = replaceObj(obj,document.createElementNS(NS,"rect"));
-    obj.setAttribute('x',cx-b/2);
-    obj.setAttribute('y',cy-a/2);
-    obj.setAttribute('width',b);
-    obj.setAttribute('height',a);
-    obj.setAttribute('stroke',"red");
-    obj.setAttribute('fill',color);
-    svg.appendChild(obj);
-    return obj;
-}
-function setCond(obj, cx,cy,a,b,color){
-    if(!obj) obj = document.createElementNS(NS,"polygon");
-    else if(obj.nodeName!="polygon") obj = replaceObj(obj,document.createElementNS(NS,"polygon"));
-    const _top    =  cx     +","+(cy-a/2);
-    const _bottom =  cx     +","+(cy+a/2);
-    const _left   = (cx-b/2)+","+ cy     ;
-    const _right  = (cx+b/2)+","+ cy     ;
-    obj.setAttribute('points',[_top,_left,_bottom,_right].join(" "));
-    obj.setAttribute('stroke',"red");
-    obj.setAttribute('fill',color);
-    svg.appendChild(obj);
-    return obj;
 }
 function insertLineBefore(x1,y1,x2,y2){
     let line = document.createElementNS(NS,'line');
@@ -177,15 +188,9 @@ function getNearestLevel(dir){
         return nodes.filter((n)=>n.x==l);
     }
     if(dir=="right") {
-        console.log("nodes"+nodes.length);
-        console.log(nodes.map((n)=>n.toString()).join(","));
-        console.log("filter");
-        console.log(nodes.filter((n)=>n.x>target.x).map((n)=>n.toString()).join(","));
         const l = nodes
             .filter((n)=>n.x>target.x)
             .reduce((a,n)=>Math.min(a,n.x),600);
-        console.log("level x");
-        console.log(l);
         return nodes.filter((n)=>n.x==l);
     }
     if(dir=="up"   ) {
@@ -297,9 +302,7 @@ function key_arror(dir, shiftKey){
 
 function key_deleteNode(){
     // ノードそのものを削除
-    console.log(target.toString());
     nodes = nodes.filter((n)=>(n!=target));
-    console.log(nodes.map((n)=>n.toString()))
     svg.removeChild(target.obj);
     const news = ["left","up","right","down"];
     let newtarget = null;
@@ -318,15 +321,50 @@ function key_deleteNode(){
     setNewTarget(newtarget);
 }
 
-document.onkeydown = function(e){
-    switch(e.key){
-        case "h": case "H": key_arror("left",  e.shiftKey); break;
-        case "j": case "J": key_arror("down",  e.shiftKey); break;
-        case "k": case "K": key_arror("up",    e.shiftKey); break;
-        case "l": case "L": key_arror("right", e.shiftKey); break;
-        case "b": key_changeShape("rect"); break;
-        case "x": key_deleteNode(); break;
-        default: break;
+function key_changeShape(type){
+    target.type = type;
+    target.update();
+    setNewTarget(target);
+}
+
+function key_deleteEdge(node, dir){
+    const news = ["left","up","right","down"];
+    const edge = node.arms[dir];
+    if(edge){
+        // 向こう岸
+        const link = edge.opposite(target);
+        const back = news[(news.indexOf(dir)+2)%4];
+        node.arms[dir ] = null;
+        link.arms[back] = null;
+        // 枝そのものを削除
+        svg.removeChild(edge.obj);
+        edges.pop(edge);
     }
-};
+}
+
+document.onkeydown = (function(){
+    let stack = "";
+    return function(e){
+        stack += e.key;
+        console.log(stack);
+        switch(stack){
+            case "h": case "H": key_arror("left",  e.shiftKey); stack="";break;
+            case "j": case "J": key_arror("down",  e.shiftKey); stack="";break;
+            case "k": case "K": key_arror("up",    e.shiftKey); stack="";break;
+            case "l": case "L": key_arror("right", e.shiftKey); stack="";break;
+            case "s": break;
+            case "sp": key_changeShape("process"); stack=""; break;
+            case "sc": key_changeShape("cond");    stack=""; break;
+            case "sk": key_changeShape("knot");    stack=""; break;
+            case "si": key_changeShape("IO");    stack=""; break;
+            case "d": break;
+            case "dh": key_deleteEdge(target, "left");  stack=""; break;
+            case "dj": key_deleteEdge(target, "down");  stack=""; break;
+            case "dk": key_deleteEdge(target, "up");    stack=""; break;
+            case "dl": key_deleteEdge(target, "right"); stack=""; break;
+            case "x": key_deleteNode(); stack=""; break;
+            default: stack=""; break;
+        }
+    };
+})();
 
