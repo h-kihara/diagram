@@ -15,6 +15,7 @@ function Node(x, y, type){
         free:[],
     };
 
+    this.toString = function(){return this.x+","+this.y+" "+this.type;};
     this.getArmsCount = function(){
         return (this.arms.up   ?1:0)
              + (this.arms.down ?1:0)
@@ -42,22 +43,30 @@ function Edge(n1, n2) {
     this.n2 = n2;
     this.obj = insertLineBefore(n1.x,n1.y,n2.x,n2.y);
     if(n1.x==n2.x && n1.y<n2.y) {
+        console.log("down");
         n1.arms.down = this;
         n2.arms.up   = this;
     }
     else if(n1.x==n2.x && n1.y>n2.y) {
+        console.log("up");
         n1.arms.up   = this;
         n2.arms.down = this;
     }
     else if(n1.y==n2.y && n1.x<n2.x) {
+        console.log("right");
         n1.arms.right   = this;
         n2.arms.left    = this;
     }
     else if(n1.y==n2.y && n1.x>n2.x) {
+        console.log("left");
+        console.log(this);
         n1.arms.left    = this;
         n2.arms.right   = this;
+        console.log(n1.arms.left);
+        console.log(n2.arms.right);
     }
     else {
+        console.log("free");
         n1.arms.free.push(this);
         n2.arms.free.push(this);
     }
@@ -143,7 +152,7 @@ nodes.push( new Node(180, 150, "knot") );// ┐
 nodes.push( new Node(180, 210, "knot") );// ┘
 nodes.push( new Node(120, 180, "process") );// 中
 nodes.push( new Node(120, 210, "knot") );// ├
-nodes.push( new Node(120, 240, "knot") );
+nodes.push( new Node(120, 250, "knot") );
 let edges = [];
 edges.push( new Edge(nodes[0],nodes[1]) );
 edges.push( new Edge(nodes[1],nodes[2]) );
@@ -168,9 +177,15 @@ function getNearestLevel(dir){
         return nodes.filter((n)=>n.x==l);
     }
     if(dir=="right") {
+        console.log("nodes"+nodes.length);
+        console.log(nodes.map((n)=>n.toString()).join(","));
+        console.log("filter");
+        console.log(nodes.filter((n)=>n.x>target.x).map((n)=>n.toString()).join(","));
         const l = nodes
             .filter((n)=>n.x>target.x)
             .reduce((a,n)=>Math.min(a,n.x),600);
+        console.log("level x");
+        console.log(l);
         return nodes.filter((n)=>n.x==l);
     }
     if(dir=="up"   ) {
@@ -186,131 +201,105 @@ function getNearestLevel(dir){
         return nodes.filter((n)=>n.y==l);
     }
 }
+function distance(n1, n2) {
+    if(n1.x==n2.x) return Math.abs(n1.y-n2.y);
+    if(n1.y==n2.y) return Math.abs(n1.x-n2.x);
+    return Math.sqrt( Math.pow(n1.x-n2.x, 2) + Math.pow(n1.y-n2.y, 2) );
+}
 
 // 移動キー入力時の動作
 //   エッジ上を通って隣のノードに移動する
 //   
 function key_arror(dir, shiftKey){
-    const news = ["left","up","right","down"];
-    const back = news[(news.indexOf(dir)+2)%4];
-    // シフトキーを押してないときは、現状変更はせず通常移動のみ
+    // 1. シフトキーを押してないときは、現状変更はせず通常移動のみ
     if(!shiftKey) {
         // 通常移動
         if(target.arms[dir]) setNewTarget(target.arms[dir].opposite(target));
     }
-    // シフトキーを押しているとき、基本的にノードの移動は行わない
+    // 2. シフトキーを押しているとき、基本的にノードの移動は行わない
     else {
-        // 正面１本しかない
-        if(target.arms[dir] && (target.getArmsCount()==1)) {
-            const len = target.arms[dir].length();
-            if(len > 30) {
-                // 縮める
-                const dx = (dir=="left") ? -30 : (dir=="right") ? 30 : 0;
-                const dy = (dir=="up"  ) ? -30 : (dir=="down" ) ? 30 : 0;
+        // 用意
+        const news = ["left","up","right","down"];
+        const back = news[(news.indexOf(dir)+2)%4];
+        const east = news[(news.indexOf(dir)+1)%4];
+        const west = news[(news.indexOf(dir)+3)%4];
+        const level = getNearestLevel(dir);
+        let dist = 1000000;
+        if(level[0]){
+            switch(dir){
+                case "left"   : dist = target.x - level[0].x; break;
+                case "up"     : dist = target.y - level[0].y; break;
+                case "right"  : dist = level[0].x - target.x; break;
+                case "down"   : dist = level[0].y - target.y; break;
+            }
+        }
+        const collisionNode = level.filter((n)=>n.x==target.x||n.y==target.y)[0];
+        const collisionEdge = (dir=="left"||dir=="right") ? 
+            level.map((n)=>n.arms.down)
+                 .filter((e)=>e)
+                 .filter((e)=>((e.n1.x-target.x)*(e.n2.x-target.x)<0))[0] :
+            level.map((n)=>n.arms.right)
+                 .filter((e)=>e)
+                 .filter((e)=>((e.n1.y-target.y)*(e.n2.y-target.y)<0))[0];
+
+        if(target.type=="knot" && target.arms[dir] && target.getArmsCount()==1) {
+            // 前にのみ枝があるので、つまり縮めようとしている
+            const len = Math.min(target.arms[dir].length(), dist, 30);
+
+            if(len < target.arms[dir].length()) {
+                console.log("水準までまたは30だけ縮める");
+                const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+                const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
                 target.move(dx,dy);
                 setNewTarget(target);
             }
             else {
-                // 根本まで縮める＝削除する
                 console.log("根本まで縮める＝削除する");
                 key_deleteNode();
             }
+            return;
         }
-        // 後ろ１本しかない
-        else if(target.arms[news[(news.indexOf(dir)+2)%4]] && (target.getArmsCount()==1)) {
-        }
-        const east = news[(news.indexOf(dir)+1)%4];
-        const west = news[(news.indexOf(dir)+3)%4];
-        // エッジを伸ばすので、衝突を検索する
-        // １．最近傍レベルを計算
-        const level = getNearestLevel(dir);
-        // 先に何もないなら
-        if(level.length==0) {
-            // デフォルトの長さで
-            const dx = (dir=="left") ? -30 : (dir=="right") ? 30 : 0;
-            const dy = (dir=="up"  ) ? -30 : (dir=="down" ) ? 30 : 0;
-            if(!target.arms[east]&&!target.arms[west]) {
-                // ノードを動かす
-                console.log("ノードを動かす");
+        else if(target.type=="knot" && target.arms[back] && target.getArmsCount()==1) {
+            // 後ろにのみ枝があるので、伸ばす
+            if(collisionNode) {
+                console.log("ノードに合流");
+                key_deleteNode();
+                edges.push( new Edge(target, collisionNode) );
+                setNewTarget(collisionNode);
+                return;
+            }
+            else if(collisionEdge){
+                console.log("XXX エッジに割り込み");
+                return;
+            }
+            else {
+                console.log("合流しなかったので伸ばす");
+                const len = Math.min(dist, 30);
+                const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+                const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
                 target.move(dx,dy);
                 setNewTarget(target);
                 return;
             }
-            else {
-                // 新しく生やす
-                const newnode = new Node(target.x + dx, target.y + dy, "knot");
-                nodes.push(newnode);
-                edges.push(new Edge(target,newnode));
-                setNewTarget(newnode);
-                return;
-            }
         }
-        // 先に何かあるなら
-        // まずそこまでの距離を計算
-        const dx = (dir=="left"||dir=="right") ? level[0].x - target.x : 0;
-        const dy = (dir=="up"  ||dir=="down" ) ? level[0].y - target.y : 0;
-        const distance = Math.abs(dx+dy);// どちらか必ずゼロなのでゼロじゃないほうの絶対値
-        const collisionNode = level.filter((n)=>n.x==target.x||n.y==target.y)[0];
-
-        // 左右に枝が伸びていなければ
-        if(!target.arms[east]&&!target.arms[west]) {
-            // 後ろにも枝がない＝今「先端」にいて戻ろうとしている場合
-            if(!target.arms[back]){
-                if(distance>30){
-                    // 縮める
-                    console.log("縮める");
-                    const dx = (dir=="left") ? -30 : (dir=="right") ? 30 : 0;
-                    const dy = (dir=="up"  ) ? -30 : (dir=="down" ) ? 30 : 0;
-                    target.move(dx,dy);
-                    setNewTarget(target);
-                }
-                else {
-                    // 根本まで縮める＝削除する
-                    console.log("削除する");
-                    key_deleteNode();
-                }
-            }
-            // 左右になくて後ろにある
-            else {
-                if(collisionNode){
-                // ノードに合流
-                console.log("ノードに合流");
-                edges.push( new Edge(target, collisionNode) );
-                setNewTarget(collisionNode);
-                }
-                else{
-                console.log("新しく生やす");
-                const newnode = new Node(target.x+dx,target.y+dy,"knot");
-                nodes.push(newnode);
-                edges.push(new Edge(target,newnode));
-                setNewTarget(newnode);
-                }
-                return;
-            }
-        }
-        else {
-            if(collisionNode) {
-                // ノードに合流
-                console.log("ノードに合流");
-                console.log(collisionNode);
-                edges.push( new Edge(target, collisionNode) );
-                setNewTarget(collisionNode);
-                return;
-            }
-            else {
-                // 新しく生やす
-                console.log("新しく生やす");
-                const newnode = new Node(target.x+dx,target.y+dy,"knot");
-                nodes.push(newnode);
-                edges.push(new Edge(target,newnode));
-                setNewTarget(newnode);
-            }
+        else if(!target.arms[dir]) {
+            console.log("生やす");
+            const len = (collisionNode||collisionEdge) ? dist/2 : Math.min(dist, 30);
+            const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+            const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
+            const newnode = new Node(target.x + dx, target.y + dy, "knot");
+            nodes.push(newnode);
+            edges.push(new Edge(target,newnode));
+            setNewTarget(newnode);
         }
     }
 }
+
 function key_deleteNode(){
     // ノードそのものを削除
-    nodes.pop(target);
+    console.log(target.toString());
+    nodes = nodes.filter((n)=>(n!=target));
+    console.log(nodes.map((n)=>n.toString()))
     svg.removeChild(target.obj);
     const news = ["left","up","right","down"];
     let newtarget = null;
@@ -339,6 +328,5 @@ document.onkeydown = function(e){
         case "x": key_deleteNode(); break;
         default: break;
     }
-    console.log(target);
 };
 
