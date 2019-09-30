@@ -96,6 +96,13 @@ function Node(x, y, type){
         svg.appendChild(obj);
         return obj;
     }
+    function replaceObj(oldobj, newobj){
+        console.log(oldobj);
+        console.log(newobj);
+        svg.insertBefore(newobj,oldobj);
+        svg.removeChild(oldobj);
+        return newobj;
+    }
 }
 function Edge(n1, n2) {
     this.n1 = n1;
@@ -135,13 +142,6 @@ function Edge(n1, n2) {
         this.obj.setAttribute("x2",this.n2.x);
         this.obj.setAttribute("y2",this.n2.y);
     };
-}
-function replaceObj(oldobj, newobj){
-    console.log(oldobj);
-    console.log(newobj);
-    svg.insertBefore(newobj,oldobj);
-    svg.removeChild(oldobj);
-    return newobj;
 }
 function insertLineBefore(x1,y1,x2,y2){
     let line = document.createElementNS(NS,'line');
