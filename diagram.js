@@ -280,43 +280,53 @@ function key_arror(dir, shiftKey){
         const collisionEdge = (dir=="left"||dir=="right") ? 
             level.map((n)=>n.arms.down)
                  .filter((e)=>e)
-                 .filter((e)=>((e.n1.x-target.x)*(e.n2.x-target.x)<0))[0] :
+                 .filter((e)=>((e.n1.y-target.y)*(e.n2.y-target.y)<0))[0] :
             level.map((n)=>n.arms.right)
                  .filter((e)=>e)
-                 .filter((e)=>((e.n1.y-target.y)*(e.n2.y-target.y)<0))[0];
+                 .filter((e)=>((e.n1.x-target.x)*(e.n2.x-target.x)<0))[0];
 
         if(target.type=="knot" && target.arms[dir] && target.getArmsCount()==1) {
             // 前にのみ枝があるので、つまり縮めようとしている
             const len = Math.min(target.arms[dir].length(), dist, 30);
 
             if(len < target.arms[dir].length()) {
-                console.log("水準までまたは30だけ縮める");
+                //console.log("水準までまたは30だけ縮める");
                 const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
                 const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
                 target.move(dx,dy);
                 setNewTarget(target);
             }
             else {
-                console.log("根本まで縮める＝削除する");
+                //console.log("根本まで縮める＝削除する");
                 key_deleteNode();
             }
             return;
         }
         else if(target.type=="knot" && target.arms[back] && target.getArmsCount()==1) {
             // 後ろにのみ枝があるので、伸ばす
-            if(collisionNode) {
-                console.log("ノードに合流");
+            if(collisionNode && dist<=30) {
+                //console.log("ノードに合流");
                 key_deleteNode();
                 edges.push( new Edge(target, collisionNode) );
                 setNewTarget(collisionNode);
                 return;
             }
-            else if(collisionEdge){
-                console.log("XXX エッジに割り込み");
+            else if(collisionEdge && dist<=30){
+                //console.log("エッジに割り込み");
+                const len = dist;
+                const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+                const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
+                target.move(dx,dy);
+                setNewTarget(target);
+                const n1 = collisionEdge.n1;
+                const n2 = collisionEdge.n2;
+                edges = edges.filter((e)=>e!=collisionEdge);
+                edges.push( new Edge(n1, target) );
+                edges.push( new Edge(target, n2) );
                 return;
             }
             else {
-                console.log("合流しなかったので伸ばす");
+                //console.log("合流しなかったので伸ばす");
                 const len = Math.min(dist, 30);
                 const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
                 const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
@@ -326,8 +336,8 @@ function key_arror(dir, shiftKey){
             }
         }
         else if(!target.arms[dir]) {
-            console.log("生やす");
-            const len = (collisionNode||collisionEdge) ? dist/2 : Math.min(dist, 30);
+            //console.log("生やす");
+            const len = Math.min((collisionNode||collisionEdge) ? dist/2 : dist, 30);
             const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
             const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
             const newnode = new Node(target.x + dx, target.y + dy, "knot");
@@ -390,7 +400,7 @@ document.onkeydown = (function(){
     return function(e){
         if(e.key.length>1) return -1;
         stack += e.key;
-        console.log(stack);
+        //console.log(stack);
         switch(stack){
             case "h": case "H": key_arror("left",  e.shiftKey); stack="";break;
             case "j": case "J": key_arror("down",  e.shiftKey); stack="";break;
