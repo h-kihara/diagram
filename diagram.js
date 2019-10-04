@@ -4,9 +4,11 @@ let svg = document.getElementById('svg');
 function Node(x, y, type){
     this.x = x;
     this.y = y;
+    this.width = 20;
+    this.height = 18;
     this.type = type;
     this.text = "";
-    this.obj = createObj(type, x, y, "");
+    this.obj = createObj(type, x, y, 20, 18, "");
     svg.appendChild(this.obj);
     this.arms = {
         up     :null,
@@ -32,7 +34,7 @@ function Node(x, y, type){
     };
     this.update = function(){
         svg.removeChild(this.obj);
-        this.obj = createObj(this.type, this.x, this.y, this.text);
+        this.obj = createObj(this.type, this.x, this.y, this.width, this.height, this.text);
         svg.appendChild(this.obj);
         this.color = this.obj.getAttribute("fill");
         if(this.arms.left ) this.arms.left.update();
@@ -51,7 +53,7 @@ function Node(x, y, type){
         t.innerHTML = text;
         return t;
     }
-    function createObj(type, x, y, text){
+    function createObj(type, x, y, w, h, text){
         let obj;
         if(type=="start") {
             const obj = document.createElementNS(NS,"circle");
@@ -70,13 +72,12 @@ function Node(x, y, type){
             return obj;
         }
         if(type=="cond") {
-            const a=16, b=20;
             const g = document.createElementNS(NS,"g");
             const p = document.createElementNS(NS,"polygon");
-            const _top    =  x     +","+(y-a/2);
-            const _bottom =  x     +","+(y+a/2);
-            const _left   = (x-b/2)+","+ y     ;
-            const _right  = (x+b/2)+","+ y     ;
+            const _top    =  x     +","+(y-h/2);
+            const _bottom =  x     +","+(y+h/2);
+            const _left   = (x-w/2)+","+ y     ;
+            const _right  = (x+w/2)+","+ y     ;
             p.setAttribute('points',[_top,_left,_bottom,_right].join(" "));
             p.setAttribute('stroke',"red");
             p.setAttribute('fill',"#FF8");
@@ -86,14 +87,13 @@ function Node(x, y, type){
             return g;
         }
         if(type=="process") {
-            const a=20, b=28;
             const g = document.createElementNS(NS,"g");
             const p = document.createElementNS(NS,"rect");
             const t = createTextElement(text, x, y);
-            p.setAttribute('x',x-b/2);
-            p.setAttribute('y',y-a/2);
-            p.setAttribute('width',b);
-            p.setAttribute('height',a);
+            p.setAttribute('x',x-w/2);
+            p.setAttribute('y',y-h/2);
+            p.setAttribute('width',w);
+            p.setAttribute('height',h);
             p.setAttribute('stroke',"red");
             p.setAttribute('fill',"#FA8");
             g.appendChild(p);
@@ -101,7 +101,6 @@ function Node(x, y, type){
             return g;
         }
         if(type=="IO") {
-            const w=20, h=12;
             const g = document.createElementNS(NS,"g");
             const p = document.createElementNS(NS,"polygon");
             const t = createTextElement(text, x, y);
@@ -194,13 +193,13 @@ function insertLineBefore(x1,y1,x2,y2){
 const zeronode = (new Node(-1,-1,"knot")).obj;
 
 let nodes = [];
-nodes.push( new Node(120,  20, "start") );
-nodes.push( new Node(120,  50, "cond") );// ◇
-nodes.push( new Node(180,  50, "knot") );// ┐
-nodes.push( new Node(180, 110, "knot") );// ┘
-nodes.push( new Node(120,  80, "process") );// 中
-nodes.push( new Node(120, 110, "knot") );// ├
-nodes.push( new Node(120, 150, "knot") );
+nodes.push( new Node(120,  50, "start") );
+nodes.push( new Node(120,  80, "cond") );// ◇
+nodes.push( new Node(180,  80, "knot") );// ┐
+nodes.push( new Node(180, 140, "knot") );// ┘
+nodes.push( new Node(120, 110, "process") );// 中
+nodes.push( new Node(120, 140, "knot") );// ├
+nodes.push( new Node(120, 180, "knot") );
 let edges = [];
 edges.push( new Edge(nodes[0],nodes[1]) );
 edges.push( new Edge(nodes[1],nodes[2]) );
@@ -390,12 +389,32 @@ function key_deleteEdge(node, dir){
     }
 }
 function key_setText(text){
-    target.text = text;
+    let ex = document.getElementById('ex');
+    ex.disabled = false;
+    ex.focus();
+    ex.onblur = function(e){
+        e.target.disabled = true;
+    };
+    document.onkeydown = function(e){
+        target.text = ex.value;
+        if(e.key=="Enter") {
+            e.target.disabled = true;
+            document.onkeydown = fnNormalMode;
+            ex.value="";
+            target.update();
+            target.setTarget();
+        }
+        return true;
+    };
+}
+function key_changeSize(dw, dh) {
+    target.width += dw;
+    target.height+= dh;
     target.update();
     target.setTarget();
 }
 
-document.onkeydown = (function(){
+const fnNormalMode = (function(){
     let stack = "";
     return function(e){
         if(e.key.length>1) return -1;
@@ -417,9 +436,17 @@ document.onkeydown = (function(){
             case "dk": key_deleteEdge(target, "up");    stack=""; break;
             case "dl": key_deleteEdge(target, "right"); stack=""; break;
             case "x": key_deleteNode(); stack=""; break;
-            case "i": key_setText(Math.floor(Math.random()*1000)); stack=""; break;
+            case "i": key_setText(Math.floor(Math.random()*1000)); stack=""; return false;
+            case "w": case "h": break;
+            case "w+": key_changeSize( 3, 0); stack=""; break;
+            case "w-": key_changeSize(-3, 0); stack=""; break;
+            case "h+": key_changeSize( 0, 3); stack=""; break;
+            case "h-": key_changeSize( 0,-3); stack=""; break;
             default: stack=""; break;
         }
+//        return false;
     };
 })();
+
+document.onkeydown = fnNormalMode;
 
