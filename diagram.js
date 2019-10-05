@@ -319,6 +319,7 @@ function key_arror(dir, shiftKey){
                 setNewTarget(target);
                 const n1 = collisionEdge.n1;
                 const n2 = collisionEdge.n2;
+                svg.removeChild(collisionEdge.obj);
                 edges = edges.filter((e)=>e!=collisionEdge);
                 edges.push( new Edge(n1, target) );
                 edges.push( new Edge(target, n2) );
@@ -388,16 +389,19 @@ function key_deleteEdge(node, dir){
         edges.pop(edge);
     }
 }
-function key_setText(text){
+function key_setText(){
+    console.log(target);
     let ex = document.getElementById('ex');
+    console.log(ex);
     ex.disabled = false;
     ex.focus();
+    ex.value = target.text;
     ex.onblur = function(e){
         e.target.disabled = true;
     };
     document.onkeydown = function(e){
         target.text = ex.value;
-        if(e.key=="Enter") {
+        if(e.key=="Enter" || (e.key=="["&&e.ctrlKey)) {
             e.target.disabled = true;
             document.onkeydown = fnNormalMode;
             ex.value="";
@@ -415,36 +419,54 @@ function key_changeSize(dw, dh) {
 }
 
 const fnNormalMode = (function(){
+    let count = 0;
     let stack = "";
+    const display = document.getElementById('display');
     return function(e){
         if(e.key.length>1) return -1;
-        stack += e.key;
-        //console.log(stack);
-        switch(stack){
-            case "h": case "H": key_arror("left",  e.shiftKey); stack="";break;
-            case "j": case "J": key_arror("down",  e.shiftKey); stack="";break;
-            case "k": case "K": key_arror("up",    e.shiftKey); stack="";break;
-            case "l": case "L": key_arror("right", e.shiftKey); stack="";break;
-            case "r": break;
-            case "rp": key_changeShape("process"); stack=""; break;
-            case "rc": key_changeShape("cond");    stack=""; break;
-            case "rk": key_changeShape("knot");    stack=""; break;
-            case "ri": key_changeShape("IO");    stack=""; break;
-            case "d": break;
-            case "dh": key_deleteEdge(target, "left");  stack=""; break;
-            case "dj": key_deleteEdge(target, "down");  stack=""; break;
-            case "dk": key_deleteEdge(target, "up");    stack=""; break;
-            case "dl": key_deleteEdge(target, "right"); stack=""; break;
-            case "x": key_deleteNode(); stack=""; break;
-            case "i": key_setText(Math.floor(Math.random()*1000)); stack=""; return false;
-            case "w": case "h": break;
-            case "w+": key_changeSize( 3, 0); stack=""; break;
-            case "w-": key_changeSize(-3, 0); stack=""; break;
-            case "h+": key_changeSize( 0, 3); stack=""; break;
-            case "h-": key_changeSize( 0,-3); stack=""; break;
-            default: stack=""; break;
+        if("0123456789".includes(e.key)) {
+            count = count * 10 + Number(e.key);
+            display.textContent = ("["+count+","+stack+"]");
+            //console.log("number ["+count+","+stack+"]");
+            return -2;
         }
-//        return false;
+        stack += e.key;
+        display.textContent = ("["+count+","+stack+"]");
+        for(let i=0;i<Math.max(count, 1); i++){
+            console.log(stack);
+            switch(stack){
+                case "h": case "H": key_arror("left",  e.shiftKey); break;
+                case "j": case "J": key_arror("down",  e.shiftKey); break;
+                case "k": case "K": key_arror("up",    e.shiftKey); break;
+                case "l": case "L": key_arror("right", e.shiftKey); break;
+                case "r": return false;
+                case "rs": key_changeShape("start"); break;
+                case "rp": key_changeShape("process"); break;
+                case "rc": key_changeShape("cond");    break;
+                case "rk": key_changeShape("knot");    break;
+                case "ri": key_changeShape("IO");      break;
+                case "d": return false;
+                case "dh": key_deleteEdge(target, "left");  break;
+                case "dj": key_deleteEdge(target, "down");  break;
+                case "dk": key_deleteEdge(target, "up");    break;
+                case "dl": key_deleteEdge(target, "right"); break;
+                case "x": key_deleteNode(); break;
+                case "i":
+                    key_setText();
+                    // リピートしたくない機能はstackを空にするか、リターンする
+                    stack="";
+                    return false;
+                case "w": case "h": return false;
+                case "w+": key_changeSize( 3, 0); break;
+                case "w-": key_changeSize(-3, 0); break;
+                case "h+": key_changeSize( 0, 3); break;
+                case "h-": key_changeSize( 0,-3); break;
+                default: break;
+            }
+        }
+        count = 0;
+        stack = "";
+        display.textContent = ("["+count+","+stack+"]");
     };
 })();
 
