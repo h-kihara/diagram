@@ -252,99 +252,97 @@ function distance(n1, n2) {
 // 移動キー入力時の動作
 //   エッジ上を通って隣のノードに移動する
 //   
-function key_arror(dir, shiftKey){
+function key_arrow(dir){
     // 1. シフトキーを押してないときは、現状変更はせず通常移動のみ
-    if(!shiftKey) {
-        // 通常移動
-        if(target.arms[dir]) setNewTarget(target.arms[dir].opposite(target));
-    }
+    // 通常移動
+    if(target.arms[dir]) setNewTarget(target.arms[dir].opposite(target));
+}
+function key_arrow_shift(dir){
     // 2. シフトキーを押しているとき、基本的にノードの移動は行わない
-    else {
-        // 用意
-        const news = ["left","up","right","down"];
-        const back = news[(news.indexOf(dir)+2)%4];
-        const east = news[(news.indexOf(dir)+1)%4];
-        const west = news[(news.indexOf(dir)+3)%4];
-        const level = getNearestLevel(dir);
-        let dist = 1000000;
-        if(level[0]){
-            switch(dir){
-                case "left"   : dist = target.x - level[0].x; break;
-                case "up"     : dist = target.y - level[0].y; break;
-                case "right"  : dist = level[0].x - target.x; break;
-                case "down"   : dist = level[0].y - target.y; break;
-            }
+    // 用意
+    const news = ["left","up","right","down"];
+    const back = news[(news.indexOf(dir)+2)%4];
+    const east = news[(news.indexOf(dir)+1)%4];
+    const west = news[(news.indexOf(dir)+3)%4];
+    const level = getNearestLevel(dir);
+    let dist = 1000000;
+    if(level[0]){
+        switch(dir){
+            case "left"   : dist = target.x - level[0].x; break;
+            case "up"     : dist = target.y - level[0].y; break;
+            case "right"  : dist = level[0].x - target.x; break;
+            case "down"   : dist = level[0].y - target.y; break;
         }
-        const collisionNode = level.filter((n)=>n.x==target.x||n.y==target.y)[0];
-        const collisionEdge = (dir=="left"||dir=="right") ? 
-            level.map((n)=>n.arms.down)
-                 .filter((e)=>e)
-                 .filter((e)=>((e.n1.y-target.y)*(e.n2.y-target.y)<0))[0] :
-            level.map((n)=>n.arms.right)
-                 .filter((e)=>e)
-                 .filter((e)=>((e.n1.x-target.x)*(e.n2.x-target.x)<0))[0];
+    }
+    const collisionNode = level.filter((n)=>n.x==target.x||n.y==target.y)[0];
+    const collisionEdge = (dir=="left"||dir=="right") ? 
+        level.map((n)=>n.arms.down)
+             .filter((e)=>e)
+             .filter((e)=>((e.n1.y-target.y)*(e.n2.y-target.y)<0))[0] :
+        level.map((n)=>n.arms.right)
+             .filter((e)=>e)
+             .filter((e)=>((e.n1.x-target.x)*(e.n2.x-target.x)<0))[0];
 
-        if(target.type=="knot" && target.arms[dir] && target.getArmsCount()==1) {
-            // 前にのみ枝があるので、つまり縮めようとしている
-            const len = Math.min(target.arms[dir].length(), dist, 30);
+    if(target.type=="knot" && target.arms[dir] && target.getArmsCount()==1) {
+        // 前にのみ枝があるので、つまり縮めようとしている
+        const len = Math.min(target.arms[dir].length(), dist, 30);
 
-            if(len < target.arms[dir].length()) {
-                //console.log("水準までまたは30だけ縮める");
-                const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
-                const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
-                target.move(dx,dy);
-                setNewTarget(target);
-            }
-            else {
-                //console.log("根本まで縮める＝削除する");
-                key_deleteNode();
-            }
-            return;
-        }
-        else if(target.type=="knot" && target.arms[back] && target.getArmsCount()==1) {
-            // 後ろにのみ枝があるので、伸ばす
-            if(collisionNode && dist<=30) {
-                //console.log("ノードに合流");
-                key_deleteNode();
-                edges.push( new Edge(target, collisionNode) );
-                setNewTarget(collisionNode);
-                return;
-            }
-            else if(collisionEdge && dist<=30){
-                //console.log("エッジに割り込み");
-                const len = dist;
-                const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
-                const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
-                target.move(dx,dy);
-                setNewTarget(target);
-                const n1 = collisionEdge.n1;
-                const n2 = collisionEdge.n2;
-                svg.removeChild(collisionEdge.obj);
-                edges = edges.filter((e)=>e!=collisionEdge);
-                edges.push( new Edge(n1, target) );
-                edges.push( new Edge(target, n2) );
-                return;
-            }
-            else {
-                //console.log("合流しなかったので伸ばす");
-                const len = Math.min(dist, 30);
-                const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
-                const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
-                target.move(dx,dy);
-                setNewTarget(target);
-                return;
-            }
-        }
-        else if(!target.arms[dir]) {
-            //console.log("生やす");
-            const len = Math.min((collisionNode||collisionEdge) ? dist/2 : dist, 30);
+        if(len < target.arms[dir].length()) {
+            //console.log("水準までまたは30だけ縮める");
             const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
             const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
-            const newnode = new Node(target.x + dx, target.y + dy, "knot");
-            nodes.push(newnode);
-            edges.push(new Edge(target,newnode));
-            setNewTarget(newnode);
+            target.move(dx,dy);
+            setNewTarget(target);
         }
+        else {
+            //console.log("根本まで縮める＝削除する");
+            key_deleteNode();
+        }
+        return;
+    }
+    else if(target.type=="knot" && target.arms[back] && target.getArmsCount()==1) {
+        // 後ろにのみ枝があるので、伸ばす
+        if(collisionNode && dist<=30) {
+            //console.log("ノードに合流");
+            key_deleteNode();
+            edges.push( new Edge(target, collisionNode) );
+            setNewTarget(collisionNode);
+            return;
+        }
+        else if(collisionEdge && dist<=30){
+            //console.log("エッジに割り込み");
+            const len = dist;
+            const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+            const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
+            target.move(dx,dy);
+            setNewTarget(target);
+            const n1 = collisionEdge.n1;
+            const n2 = collisionEdge.n2;
+            svg.removeChild(collisionEdge.obj);
+            edges = edges.filter((e)=>e!=collisionEdge);
+            edges.push( new Edge(n1, target) );
+            edges.push( new Edge(target, n2) );
+            return;
+        }
+        else {
+            //console.log("合流しなかったので伸ばす");
+            const len = Math.min(dist, 30);
+            const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+            const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
+            target.move(dx,dy);
+            setNewTarget(target);
+            return;
+        }
+    }
+    else if(!target.arms[dir]) {
+        //console.log("生やす");
+        const len = Math.min((collisionNode||collisionEdge) ? dist/2 : dist, 30);
+        const dx = (dir=="left") ? -len : (dir=="right") ? len : 0;
+        const dy = (dir=="up"  ) ? -len : (dir=="down" ) ? len : 0;
+        const newnode = new Node(target.x + dx, target.y + dy, "knot");
+        nodes.push(newnode);
+        edges.push(new Edge(target,newnode));
+        setNewTarget(newnode);
     }
 }
 
@@ -435,10 +433,14 @@ const fnNormalMode = (function(){
         for(let i=0;i<Math.max(count, 1); i++){
             console.log(stack);
             switch(stack){
-                case "h": case "H": key_arror("left",  e.shiftKey); break;
-                case "j": case "J": key_arror("down",  e.shiftKey); break;
-                case "k": case "K": key_arror("up",    e.shiftKey); break;
-                case "l": case "L": key_arror("right", e.shiftKey); break;
+                case "h": key_arrow("left"); break;
+                case "j": key_arrow("down"); break;
+                case "k": key_arrow("up"); break;
+                case "l": key_arrow("right"); break;
+                case "H": key_arrow_shift("left"); break;
+                case "J": key_arrow_shift("down"); break;
+                case "K": key_arrow_shift("up"); break;
+                case "L": key_arrow_shift("right"); break;
                 case "r": return false;
                 case "rs": key_changeShape("start"); break;
                 case "rp": key_changeShape("process"); break;
@@ -471,4 +473,6 @@ const fnNormalMode = (function(){
 })();
 
 document.onkeydown = fnNormalMode;
+
+
 
