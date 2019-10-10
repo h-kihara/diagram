@@ -43,6 +43,13 @@ function Node(x, y, type){
         if(this.arms.down ) this.arms.down.update();
         this.arms.free.forEach((e)=>e.update());
     };
+    this.resize_for_text = function(){
+        const bbox = this.obj.getElementsByTagNameNS(NS,'text')[0].getBBox();
+        const tw = bbox.width;
+        const th = bbox.height;
+        if(this.width <tw+3) this.width =tw+3;
+        if(this.height<th+3) this.height=th+3;
+    };
     function createTextElement(text, x, y){
         const t = document.createElementNS(NS,"text");
         t.setAttribute('x',x);
@@ -398,8 +405,10 @@ function key_setText(){
         e.target.disabled = true;
     };
     document.onkeydown = function(e){
-        target.text = ex.value;
         if(e.key=="Enter" || (e.key=="["&&e.ctrlKey)) {
+            target.text = ex.value;
+            target.update();
+            target.resize_for_text();
             e.target.disabled = true;
             document.onkeydown = fnNormalMode;
             ex.value="";
