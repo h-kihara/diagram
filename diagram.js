@@ -44,7 +44,9 @@ function Node(x, y, type){
         this.arms.free.forEach((e)=>e.update());
     };
     this.resize_for_text = function(){
-        const bbox = this.obj.getElementsByTagNameNS(NS,'text')[0].getBBox();
+        const text = this.obj.getElementsByTagNameNS(NS,'text')[0];
+        if(!text) return;
+        const bbox = text.getBBox();
         const tw = bbox.width;
         const th = bbox.height;
         if(this.width <tw+3) this.width =tw+3;
@@ -396,6 +398,7 @@ function key_deleteEdge(node, dir){
 }
 function key_setText(){
     console.log(target);
+    if(!target.obj.getElementsByTagNameNS(NS,'text')[0]) return false;
     let ex = document.getElementById('ex');
     console.log(ex);
     ex.disabled = false;
