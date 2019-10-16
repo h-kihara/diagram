@@ -428,6 +428,10 @@ function key_changeSize(dw, dh) {
     target.setTarget();
 }
 
+/**
+ * ノーマルモードにおける挙動を定義 
+ * 
+ */
 const fnNormalMode = (function(){
     let count = 0;
     let stack = "";
@@ -484,7 +488,29 @@ const fnNormalMode = (function(){
     };
 })();
 
+
 document.onkeydown = fnNormalMode;
+// メッセージ内容はChromeだと固定だが何か入れないとメッセージ出ない
+//window.onbeforeunload =
+//    event=>event.returnValue = "保存されていないデータは失われます"
+if(window.File){window.alert("File API OK");}else{alert("File API NG");}
 
-
+document.getElementById('save').addEventListener("click", function(){
+    const text =
+        nodes.map((n,i)=>[
+            i,
+            "("+n.x+","+n.y+")",
+            n.type,
+            (function(n){
+                const tt = n.obj.getElementsByTagNameNS(NS,'text')[0];
+                if(tt){
+                    return (tt.value) ? "<"+tt.value+">" : "<>";
+                }else{
+                    return "";
+                }
+            })(n)
+        ].join(" ")).join("\n")
+    + "\n" +
+        edges.map(e=>nodes.indexOf(e.n1)+","+nodes.indexOf(e.n2)).join("\n");
+});
 
