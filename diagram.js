@@ -8,8 +8,10 @@ function Node(x, y, type){
     this.height = 18;
     this.type = type;
     this.text = "";
-    this.obj = createObj(type, x, y, 20, 18, "");
-    svg.appendChild(this.obj);
+    const _obj = createObj(type, x, y, 20, 18, "");
+    console.log(_obj);
+    svg.appendChild(_obj);
+    this.obj = _obj;
     this.arms = {
         up     :null,
         down   :null,
@@ -64,6 +66,7 @@ function Node(x, y, type){
     }
     function createObj(type, x, y, w, h, text){
         let obj;
+        console.log(type,x,y,w,h,text);
         if(type=="start") {
             const obj = document.createElementNS(NS,"circle");
             obj.setAttribute('cx',x);
@@ -126,6 +129,7 @@ function Node(x, y, type){
             g.appendChild(t);
             return g;
         }
+        console.error(type + " is not Node-Type");
     }
     function replaceObj(oldobj, newobj){
         svg.insertBefore(newobj,oldobj);
@@ -219,6 +223,7 @@ edges.push( new Edge(nodes[4],nodes[5]) );
 edges.push( new Edge(nodes[5],nodes[6]) );
 
 let target = nodes[0];
+console.log(target);
 target.setTarget();
 
 function setNewTarget(node){
@@ -397,10 +402,8 @@ function key_deleteEdge(node, dir){
     }
 }
 function key_setText(){
-    console.log(target);
     if(!target.obj.getElementsByTagNameNS(NS,'text')[0]) return false;
     let ex = document.getElementById('ex');
-    console.log(ex);
     ex.disabled = false;
     ex.focus();
     ex.value = target.text;
@@ -441,13 +444,11 @@ const fnNormalMode = (function(){
         if("0123456789".includes(e.key)) {
             count = count * 10 + Number(e.key);
             display.textContent = ("["+count+","+stack+"]");
-            //console.log("number ["+count+","+stack+"]");
             return -2;
         }
         stack += e.key;
         display.textContent = ("["+count+","+stack+"]");
         for(let i=0;i<Math.max(count, 1); i++){
-            console.log(stack);
             switch(stack){
                 case "h": key_arrow("left"); break;
                 case "j": key_arrow("down"); break;
@@ -488,18 +489,11 @@ const fnNormalMode = (function(){
     };
 })();
 
-
-document.onkeydown = fnNormalMode;
-// メッセージ内容はChromeだと固定だが何か入れないとメッセージ出ない
-//window.onbeforeunload =
-//    event=>event.returnValue = "保存されていないデータは失われます"
-if(window.File){window.alert("File API OK");}else{alert("File API NG");}
-
-document.getElementById('save').addEventListener("click", function(){
-    const text =
-        nodes.map((n,i)=>[
-            i,
+function encodeDiagramToText(nodes, edges) {
+    return nodes.map((n,i)=>[
+            "node_" + i,
             "("+n.x+","+n.y+")",
+            "["+n.w+","+n.h+"]",
             n.type,
             (function(n){
                 const tt = n.obj.getElementsByTagNameNS(NS,'text')[0];
@@ -509,8 +503,64 @@ document.getElementById('save').addEventListener("click", function(){
                     return "";
                 }
             })(n)
-        ].join(" ")).join("\n")
-    + "\n" +
-        edges.map(e=>nodes.indexOf(e.n1)+","+nodes.indexOf(e.n2)).join("\n");
+    ].join(" ")).join("\n")
+    + "\n"
+    + edges.map(e=>
+            "edge:"+nodes.indexOf(e.n1)+","+nodes.indexOf(e.n2)
+    ).join("\n");
+}
+
+function decodeTextToDiagram(text) {
+    text.split('\n').forEach(function(record) {
+        const r = record.split(/[_:\(\)\[\] ,<>]/).filter(a=>a);
+        console.log(r);
+        if(r[0]=="node") {
+            const x = Number(r[2]);
+            const y = Number(r[3]);
+            const type = r[6];
+            const node = new Node(x, y, type);
+            node.width  = Number(r[4]);
+            node.height = Number(r[5]);
+            nodes.push(node);
+        }
+        else {
+            const n1 = nodes[Number(r[1])];
+            const n2 = nodes[Number(r[2])];
+            const edge = new Edge(n1, n2);
+            edges.push(edge);
+        }
+    });
+    setNewTarget(nodes[0]);
+}
+
+function deleteAll(){
+    nodes.forEach(function(n){
+        svg.removeChild(n.obj);
+    });
+    nodes = [];
+    edges.forEach(function(e){
+        svg.removeChild(e.obj);
+    });
+    edges = [];
+}
+
+document.onkeydown = fnNormalMode;
+// メッセージ内容はChromeだと固定だが何か入れないとメッセージ出ない
+//window.onbeforeunload =
+//    event=>event.returnValue = "保存されていないデータは失われます"
+//if(window.File){window.alert("File API OK");}else{alert("File API NG");}
+
+let g_savedata = "";
+document.getElementById('save').addEventListener("click", function(){
+    g_savedata = encodeDiagramToText(nodes, edges);
+    console.log(g_savedata);
+    let blob = new Blob([g_savedata], {"type":"text/plain"});
+    window.URL = window.URL||window.webkitURL;
+    document.getElementById('download')
+        .setAttribute("href",window.URL.createObjectURL(blob));
+});
+document.getElementById('load').addEventListener("click", function(){
+    deleteAll();
+    decodeTextToDiagram(g_savedata);
 });
 
