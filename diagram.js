@@ -9,7 +9,6 @@ function Node(x, y, type){
     this.type = type;
     this.text = "";
     const _obj = createObj(type, x, y, 20, 18, "");
-    console.log(_obj);
     svg.appendChild(_obj);
     this.obj = _obj;
     this.arms = {
@@ -66,7 +65,6 @@ function Node(x, y, type){
     }
     function createObj(type, x, y, w, h, text){
         let obj;
-        console.log(type,x,y,w,h,text);
         if(type=="start") {
             const obj = document.createElementNS(NS,"circle");
             obj.setAttribute('cx',x);
@@ -223,7 +221,6 @@ edges.push( new Edge(nodes[4],nodes[5]) );
 edges.push( new Edge(nodes[5],nodes[6]) );
 
 let target = nodes[0];
-console.log(target);
 target.setTarget();
 
 function setNewTarget(node){
@@ -374,11 +371,13 @@ function key_deleteNode(){
             newtarget.arms[news[(i+2)%4]] = null;
             // 枝そのものを削除
             svg.removeChild(edge.obj);
-            edges.pop(edge);
+            edges = edges.filter(e=>e!=edge);
         }
     }
-    // 向こう岸を新しいターゲットにする
+    // 向こう岸（なければnodes[0]）を新しいターゲットにする
+    if (!newtarget) newtarget = nodes[0];
     setNewTarget(newtarget);
+
 }
 
 function key_changeShape(type){
@@ -493,12 +492,12 @@ function encodeDiagramToText(nodes, edges) {
     return nodes.map((n,i)=>[
             "node_" + i,
             "("+n.x+","+n.y+")",
-            "["+n.w+","+n.h+"]",
+            "["+n.width+","+n.height+"]",
             n.type,
             (function(n){
                 const tt = n.obj.getElementsByTagNameNS(NS,'text')[0];
                 if(tt){
-                    return (tt.value) ? "<"+tt.value+">" : "<>";
+                    return (tt.textContent) ? "<"+tt.textContent+">" : "<>";
                 }else{
                     return "";
                 }
@@ -512,8 +511,7 @@ function encodeDiagramToText(nodes, edges) {
 
 function decodeTextToDiagram(text) {
     text.split('\n').forEach(function(record) {
-        const r = record.split(/[_:\(\)\[\] ,<>]/).filter(a=>a);
-        console.log(r);
+        const r = record.split(/[_:\(\)\[\] ,]/).filter(a=>a);
         if(r[0]=="node") {
             const x = Number(r[2]);
             const y = Number(r[3]);
@@ -521,6 +519,8 @@ function decodeTextToDiagram(text) {
             const node = new Node(x, y, type);
             node.width  = Number(r[4]);
             node.height = Number(r[5]);
+            node.text = r.slice(7).join("").split(/^<|>$/).filter(t=>t)[0];
+            node.update();
             nodes.push(node);
         }
         else {
@@ -553,7 +553,6 @@ document.onkeydown = fnNormalMode;
 let g_savedata = "";
 document.getElementById('save').addEventListener("click", function(){
     g_savedata = encodeDiagramToText(nodes, edges);
-    console.log(g_savedata);
     let blob = new Blob([g_savedata], {"type":"text/plain"});
     window.URL = window.URL||window.webkitURL;
     document.getElementById('download')
