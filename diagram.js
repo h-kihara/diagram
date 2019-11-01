@@ -423,6 +423,28 @@ function key_setText(){
         return true;
     };
 }
+function key_setExMode(header){
+    let ex = document.getElementById('ex');
+    ex.disabled = false;
+    ex.focus();
+    ex.value = header;
+    ex.onblur = function(e){
+        e.target.disabled = true;
+    };
+    document.onkeydown = function(e){
+        if(ex.value=="" || e.key=="Enter" || (e.key=="["&&e.ctrlKey)) {
+            switch(ex.value) {
+            case ":w" : save(); break;
+            }
+            e.target.disabled = true;
+            document.onkeydown = fnNormalMode;
+            ex.value="";
+            target.update();
+            target.setTarget();
+        }
+        return true;
+    };
+}
 function key_changeSize(dw, dh) {
     target.width += dw;
     target.height+= dh;
@@ -448,6 +470,7 @@ const fnNormalMode = (function(){
         stack += e.key;
         display.textContent = ("["+count+","+stack+"]");
         for(let i=0;i<Math.max(count, 1); i++){
+            console.log(stack);
             switch(stack){
                 case "h": key_arrow("left"); break;
                 case "j": key_arrow("down"); break;
@@ -479,6 +502,7 @@ const fnNormalMode = (function(){
                 case "w-": key_changeSize(-3, 0); break;
                 case "h+": key_changeSize( 0, 3); break;
                 case "h-": key_changeSize( 0,-3); break;
+                case ":" : key_setExMode(":"); stack=""; return false;
                 default: break;
             }
         }
@@ -519,7 +543,10 @@ function decodeTextToDiagram(text) {
             const node = new Node(x, y, type);
             node.width  = Number(r[4]);
             node.height = Number(r[5]);
-            node.text = r.slice(7).join("").split(/^<|>$/).filter(t=>t)[0];
+            const text_ = r.slice(7).join("");
+            node.text =
+                (r[7]) ? text_.split(/^<|>$/).filter(t=>t)[0]
+                       : "";
             node.update();
             nodes.push(node);
         }
@@ -551,15 +578,17 @@ document.onkeydown = fnNormalMode;
 //if(window.File){window.alert("File API OK");}else{alert("File API NG");}
 
 let g_savedata = "";
-document.getElementById('save').addEventListener("click", function(){
+function save(){
     g_savedata = encodeDiagramToText(nodes, edges);
     let blob = new Blob([g_savedata], {"type":"text/plain"});
     window.URL = window.URL||window.webkitURL;
     document.getElementById('download')
         .setAttribute("href",window.URL.createObjectURL(blob));
-});
-document.getElementById('load').addEventListener("click", function(){
+}
+document.getElementById('save').addEventListener("click",save);
+function load(){
     deleteAll();
     decodeTextToDiagram(g_savedata);
-});
+}
+document.getElementById('load').addEventListener("click", load);
 
